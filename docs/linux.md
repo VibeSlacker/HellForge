@@ -183,6 +183,18 @@ The galactic war is fetched just before the namespace is entered (`HellForge.Loc
 session serves that copy. With "Follow the live galactic war", the war is the one from launch time and moves on at the
 next launch.
 
+### Co-op on Linux: opening UDP (optional)
+
+**Experimental, and it needs testing.** The game starts and runs with this, and the network check below passes, but nobody has yet joined a friend's game with it. Please report what you see, good or bad, with `backend/multiplayer.log` from the session.
+
+Steam's networking, which co-op uses, runs inside the backend's own process and reaches Valve's relays over UDP, so the
+default namespace (no route at all) cannot carry it. Start with `HELLFORGE_STEAM_UDP=1 bash linux/hellforge-linux.sh` and
+`hellforge-offline.sh` attaches `pasta` (package `passt`) to the same namespace from outside (running the game under `pasta -- command` gave it its own pid, mount, ipc and hostname namespaces and it quit during start), which gives it a real route: UDP gets out, while a policy rule
+(`ip rule add ipproto tcp prohibit`) still refuses every TCP connection with the same WSAEACCES, so the session's network
+probe passes as before. Name lookups over UDP also work in this mode, and the game process itself can send UDP, so it is
+looser than the default and off unless you set it. Checked with a plain network test (UDP reply from 1.1.1.1, TCP refused
+over IPv4 and IPv6, loopback fine); co-op with a friend has not been tested yet.
+
 ## One prefix, one network
 
 Wine opens a Windows program's sockets in the prefix's `wineserver`, so a program gets the wineserver's network, not its
