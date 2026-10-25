@@ -185,15 +185,20 @@ next launch.
 
 ### Co-op on Linux: opening UDP (optional)
 
-**Experimental, and it needs testing.** The game starts and runs with this, and the network check below passes, but nobody has yet joined a friend's game with it. Please report what you see, good or bad, with `backend/multiplayer.log` from the session.
+**Experimental, and it needs testing.** The game starts and runs with this, and the network check below passes. The first version of it (all UDP open) joined a friend's game on two Linux machines (issue 22); the restricted version below has not yet been tried with a friend. Please report what you see, good or bad, with `backend/multiplayer.log` from the session.
 
 Steam's networking, which co-op uses, runs inside the backend's own process and reaches Valve's relays over UDP, so the
 default namespace (no route at all) cannot carry it. Start with `HELLFORGE_STEAM_UDP=1 bash linux/hellforge-linux.sh` and
-`hellforge-offline.sh` attaches `pasta` (package `passt`) to the same namespace from outside (running the game under `pasta -- command` gave it its own pid, mount, ipc and hostname namespaces and it quit during start), which gives it a real route: UDP gets out, while a policy rule
-(`ip rule add ipproto tcp prohibit`) still refuses every TCP connection with the same WSAEACCES, so the session's network
-probe passes as before. Name lookups over UDP also work in this mode, and the game process itself can send UDP, so it is
-looser than the default and off unless you set it. Checked with a plain network test (UDP reply from 1.1.1.1, TCP refused
-over IPv4 and IPv6, loopback fine); co-op with a friend has not been tested yet.
+`hellforge-offline.sh` attaches `pasta` (package `passt`) to the same namespace from outside (running the game under `pasta -- command` gave it its own pid, mount, ipc and hostname namespaces and it quit during start), which gives it a real route. Two policy rules then
+close it again: `ip rule add ipproto tcp prohibit` refuses every TCP connection with the same WSAEACCES, so the session's
+network probe passes as before, and UDP is allowed only to Valve's relays, address and port range each, from the list Valve
+publishes for the game (`ISteamApps/GetSDRConfig/v1`, app 553850), fetched at launch while this PC still has its network
+(the last one is kept in `~/.cache/hellforge/sdr-relays.txt` for a launch without a network; with neither, it does not
+start). Every other UDP destination, name lookups included, is refused, and the self-test refuses to start if one
+works. It needs `python3` for the list. Co-op through Steam's relays should still work; a direct peer-to-peer path between
+two players is not allowed and Steam falls back to a relay. Checked in the namespace: UDP to a relay address and port
+goes out, the same address on another port, 1.1.1.1 and 8.8.8.8 are refused, TCP refused, loopback fine. A solo session's packet capture
+(about 5 minutes) showed only backend UDP to Valve relays and nothing from the game process.
 
 ## One prefix, one network
 
